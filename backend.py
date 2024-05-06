@@ -2,11 +2,14 @@ import json
 import requests
 
 # Query NOMAD
-upload_id = "FT8UX98FS5KtDbNBw-dU3A"
+upload_id = "-jbjmBQ4SNSMi9CkaXhhug"
 
-nomad_url = "https://nomad-lab.eu/prod/v1/api/v1/entries/archive/query"
+nomad_url = "https://nomad-lab.eu/prod/v1/api/v1/entries/archive/query"  # ! add support for stagging
 nomad_params = {
     "query": {"upload_id": upload_id},
+    "pagination": {
+            "page_size": 1e3,  # 1e4 is the max supported by NOMAD
+        },
     "required": {
         "resolve-inplace": True,
         "metadata": {
