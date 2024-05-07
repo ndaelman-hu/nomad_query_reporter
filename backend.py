@@ -68,9 +68,9 @@ def llama_response_to_list(llama_response: dict[str, str]) -> list[dict[str, str
     return json.loads(llama_response.content.decode('ascii').strip())['message']['content']
 
 # Check if the NOMAD query was successful
-nomad_df_header = []
-nomad_df_body = []
-trial_counter, max_trials, first_pass = 0, 10, True
+nomad_df_header, nomad_df_body = [], []
+trial_counter, max_trials = 0, 10
+first_pass, total_hits = True, 0
 while True:
     nomad_response = requests.post(nomad_url, json=nomad_params)
     trial_counter += 1
@@ -78,7 +78,8 @@ while True:
         nomad_data = nomad_response.json()
         # Update progress
         if first_pass:
-            print(f"Found {nomad_data['pagination']['total']} entries matching upload_id {upload_id} in NOMAD. Commencing download...")
+            total_hits = nomad_data['pagination']['total']
+            print(f"Found {total_hits} entries matching upload_id {upload_id} in NOMAD. Commencing download...")
             first_pass = False
         print(f"Downloading {nomad_data['pagination']['page_size']} more files from NOMAD...")
         # Mangle data
@@ -86,6 +87,7 @@ while True:
             nomad_df_body.append([value for _, value in get_leaf_nodes(entry["archive"])])
         if nomad_df_header == []:
             nomad_df_header = [".".join(map(str, path)) for path, _ in get_leaf_nodes(entry["archive"])]
+        print(f"Accumulated {len(nomad_df_body)}/{total_hits} entries thus far.")    
         if (next_page := nomad_data['pagination'].get('next_page_after_value', '')):
             nomad_params["pagination"]["page_after_value"] = next_page
             trial_counter = 0 # reset the trial counter
@@ -100,7 +102,7 @@ while True:
     else:
         print("Failed to query NOMAD:", nomad_response.text)
         sys.exit(1)  # ! add error handling
-print(f"Found {len(nomad_df_body)} results in NOMAD for upload_id {upload_id}. Analyzing...")
+print(f"Download completed. Analyzing...")
 
 nomad_df = pd.DataFrame(nomad_df_body, columns=nomad_df_header)
 print(nomad_df.describe(include="all"))
