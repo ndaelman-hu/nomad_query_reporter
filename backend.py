@@ -137,11 +137,3 @@ if llama_init_response.status_code == 200:
     print(llama_response_to_list(llama_init_response))
 else:
     print("Failed to push llama query:", llama_init_response.text)
-
-# ! add citations
-if any([len(x['datasets']) for x in nomad_metadata]) and False:  # deactivated
-    llama_citation_response = requests.post(llama_url, json=llama_complete(llama_inject_context(llama_citation, llama_init_data)))
-    if llama_citation_response.status_code == 200:
-        print(''.join([x["response"] for x in llama_response_to_list(llama_citation_response)]))
-    else:
-        print("Failed to push llama follow-up query:", llama_citation_response.text)
