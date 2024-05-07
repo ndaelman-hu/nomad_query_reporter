@@ -38,6 +38,7 @@ nomad_params = {
     }
 }
 
+# Helper functions
 def get_leaf_nodes(data, path=None):
     if path is None:
         path = []
@@ -69,12 +70,18 @@ def llama_response_to_list(llama_response: dict[str, str]) -> list[dict[str, str
 # Check if the NOMAD query was successful
 nomad_df_header = []
 nomad_df_body = []
-trial_counter, max_trials = 0, 10
+trial_counter, max_trials, first_pass = 0, 10, True
 while True:
     nomad_response = requests.post(nomad_url, json=nomad_params)
     trial_counter += 1
     if nomad_response.status_code == 200:
         nomad_data = nomad_response.json()
+        # Update progress
+        if first_pass:
+            print(f"Found {nomad_data['pagination']['total']} entries matching upload_id {upload_id} in NOMAD. Commencing download...")
+            first_pass = False
+        print(f"Downloading {nomad_data['pagination']['page_size']} more files from NOMAD...")
+        # Mangle data
         for entry in nomad_data['data']:
             nomad_df_body.append([value for _, value in get_leaf_nodes(entry["archive"])])
         if nomad_df_header == []:
