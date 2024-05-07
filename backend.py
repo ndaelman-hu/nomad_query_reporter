@@ -5,11 +5,12 @@ import sys
 import time
 
 # Query NOMAD
-upload_id = "-jbjmBQ4SNSMi9CkaXhhug"
+upload_id = "FT8UX98FS5KtDbNBw-dU3A"
+entry_id = ["39BBF0_EGSBTsWTCxK1mWan6pXCl", "LIYYoAIIUJUzIZcYFmIzLK7UzOq3"]
 
 nomad_url = "https://nomad-lab.eu/prod/v1/api/v1/entries/archive/query"  # ! add support for stagging
 nomad_params = {
-    "query": {"upload_id": upload_id},
+    "query": {"entry_id:any": entry_id},
     "pagination": {
             "page_size": 1e2,  # 1e4 is the max supported by NOMAD
         },
@@ -24,17 +25,9 @@ nomad_params = {
             "material": {
                 "material_name": "*",
                 "chemical_formula_iupac": "*",
-                "symmetry": "*",
-            },
-            "method": {
-                "method_name": "*",
-                "workflow_name": "*",
-                "simulation": {
-                    "program_name": "*",
-                    "program_version": "*",
-                },
             }
-        }
+        },
+        "data": "*"
     }
 }
 
@@ -64,11 +57,10 @@ def llama_inject_context(llama_prompt: dict[str, str], llama_responses: list[dic
     return llama_prompt
 
 def llama_response_to_list(llama_response: dict[str, str]) -> list[dict[str, str]]:
-    return json.loads(llama_response.content.decode('ascii').strip())['message']['content']
+    return json.loads(llama_response.content.decode('utf-8').strip())['message']['content'] # check for ascii or utf-8
 
 # Check if the NOMAD query was successful
-nomad_df_header = []
-nomad_df_body = []
+nomad_df_body = pd.DataFrame()
 trial_counter, max_trials = 0, 10
 while True:
     nomad_response = requests.post(nomad_url, json=nomad_params)
@@ -76,9 +68,8 @@ while True:
     if nomad_response.status_code == 200:
         nomad_data = nomad_response.json()
         for entry in nomad_data['data']:
-            nomad_df_body.append([value for _, value in get_leaf_nodes(entry["archive"])])
-        if nomad_df_header == []:
-            nomad_df_header = [".".join(map(str, path)) for path, _ in get_leaf_nodes(entry["archive"])]
+            nomad_df_entry = pd.json_normalize(entry["archive"])
+            nomad_df_body = pd.concat([nomad_df_body, nomad_df_entry], ignore_index=True, sort=False)
         if (next_page := nomad_data['pagination'].get('next_page_after_value', '')):
             nomad_params["pagination"]["page_after_value"] = next_page
             trial_counter = 0 # reset the trial counter
@@ -95,8 +86,13 @@ while True:
         sys.exit(1)  # ! add error handling
 print(f"Found {len(nomad_df_body)} results in NOMAD for upload_id {upload_id}. Analyzing...")
 
-nomad_df = pd.DataFrame(nomad_df_body, columns=nomad_df_header)
+
+nomad_df = pd.DataFrame(nomad_df_body)
 print(nomad_df.describe(include="all"))
+
+nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)
+column_dict = nomad_df.to_dict(orient='list')
+print(column_dict)
 
 # Push a llama query
 llama_url = "http://172.28.105.30/backend/api/chat"
@@ -105,22 +101,26 @@ llama_init_params = {
         {
             "role": "system",
             "content": """
-                You are a data analyst, summarizing data from a database.
+                You are a data analyst, summarizing data from experimental samples.
                 You give me short (max 250 words) responses to my prompts.
+                You only write full sentences and no bullet points.
                 You stay on-topic and provide relevant information.
                 No disclaimer or suggestions for improvements.
+                Ignore input data that is Unknown and do not write about unknown or nan values.
             """.strip().replace("\n", ""),
         },
         {
             "role": "user",
             "content": """
-                Write me a Methods section for a paper draft.
-                Here is a response from the database API:
+                Formulate the full method section for a scientific publication used to describe the sample fabrication and characterization.
+                Write full sentences. 
+                Focus on process steps and used parameters which these processes have in common.
+                Here is the data you can use:
             """.strip().replace("\n", ""),
         },
         {
             "role": "user",
-            "content": str(nomad_df.describe(include="all")),
+            "content": str(nomad_df.describe(include='all')),
         }
     ]  
 }
