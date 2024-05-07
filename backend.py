@@ -21,8 +21,10 @@ def get_leaf_nodes(data, path=None):
 
 def llama_complete(llama_prompt: dict[str, str]) -> dict[str, str]:
     llama_prompt['model'] = "llama3:70b"
-    llama_prompt['seed'] = 42
-    llama_prompt['temperature'] = 0.05
+    llama_prompt['options'] = {
+        "temperature": 0.1,
+        "seed": 42,
+    }
     llama_prompt['stream'] = False
     return llama_prompt
 
@@ -62,11 +64,10 @@ def query_nomad(upload_id: str):
                     "workflow_name": "*",
                     "simulation": {
                         "program_name": "*",
-                        "program_version": "*",
                     },
-                }
+                },
+                "properties": "*",
             },
-            "data": "*"
         }
     }
 
@@ -86,8 +87,13 @@ def query_nomad(upload_id: str):
                 first_pass = False
             # Mangle data
             for entry in nomad_data['data']:
-                nomad_df_entry = pd.json_normalize(entry["archive"])
-                nomad_df = pd.concat([nomad_df, nomad_df_entry], ignore_index=True, sort=False)
+                leafs = get_leaf_nodes(entry["archive"])
+                nomad_df_entry = pd.DataFrame(
+                    {".".join([str(l) for l in leaf[0]]): [leaf[1]] for leaf in leafs}
+                )
+                nomad_df = pd.concat(
+                    [nomad_df, nomad_df_entry], ignore_index=True, sort=False
+                )
             print(f"Accumulated {len(nomad_df)}/{total_hits} entries thus far.")
             if (next_page := nomad_data['pagination'].get('next_page_after_value', '')):
                 nomad_params["pagination"]["page_after_value"] = next_page
@@ -110,11 +116,8 @@ def query_nomad(upload_id: str):
 
 def report_on_upload(upload_id: str):
     nomad_df = query_nomad(upload_id)
-    print(nomad_df.describe(include="all"))
 
     nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)
-    column_dict = nomad_df.to_dict(orient='list')
-    print(column_dict)
 
     # Push a llama query
     llama_url = "http://172.28.105.30/backend/api/chat"
@@ -123,37 +126,34 @@ def report_on_upload(upload_id: str):
             {
                 "role": "system",
                 "content": """
-                    You are a data analyst, summarizing data from experimental samples.
-                    You give me short (max 250 words) responses to my prompts.
-                    You only write full sentences and no bullet points.
-                    You stay on-topic and provide relevant information.
-                    No disclaimer or suggestions for improvements.
-                    Ignore input data that is Unknown and do not write about unknown or nan values.
+                    I am a data analyst, summarizing data that you provide.
+                    I only provide full-sentence summaries, and no bullet points.
+                    Let us stay on-topic and provide relevant information only.
+                    I will no bother you with disclaimers or suggestions for improvements.
                 """.strip().replace("\n", ""),
             },
             {
                 "role": "user",
                 "content": """
-                    Formulate the full method section for a scientific publication used to describe the sample fabrication and characterization.
-                    Write full sentences. 
-                    Focus on process steps and used parameters which these processes have in common.
-                    Here is the data you can use:
+                    Here is my data:
                 """.strip().replace("\n", ""),
             },
             {
                 "role": "user",
                 "content": str(nomad_df.describe(include='all')),
-            }
-        ]  
+            },
+            {
+                "role": "user",
+                "content": """
+                    Formulate a method and a results section for a scientific publication
+                    based on the parameters provided. Write full sentences. 
+                    Focus on process steps and used parameters which these processes have in common.
+                    Ignore input data that is Unknown and do not write about unknown or nan values.
+                """.strip().replace("\n", ""),
+            },
+        ] 
     }
 
-    llama_citation = {
-        "prompt": """
-            Amend the previous response by adding citations. Say that a 'similar setup as in [1]' was used.
-            Then, at the end, add the actual citations. You can go over the previous word limit now.
-            Avoid citations of methodology, programs, or experimental hardware.
-        """.strip().replace("\n", ""),
-    } # ! query another API for the DOI
 
     llama_init_response = requests.post(llama_url, json=llama_complete(llama_init_params))
 
