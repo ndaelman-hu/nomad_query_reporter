@@ -81,7 +81,6 @@ while True:
             total_hits = nomad_data['pagination']['total']
             print(f"Found {total_hits} entries matching upload_id {upload_id} in NOMAD. Commencing download...")
             first_pass = False
-        print(f"Downloading {nomad_data['pagination']['page_size']} more files from NOMAD...")
         # Mangle data
         for entry in nomad_data['data']:
             nomad_df_body.append([value for _, value in get_leaf_nodes(entry["archive"])])
