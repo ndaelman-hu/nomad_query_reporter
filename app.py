@@ -55,7 +55,7 @@ if prompt := st.chat_input("What is the upload id? Use commas to separate multip
         )
     response = buffer.getvalue()
 
-    with st.chat_message("Reporter"):
+    with st.chat_message("assistant"):
         st.write(_fix_streamlit_space(response))
 
-    st.session_state.messages.append({"role": "Reporter", "content": response})
+    st.session_state.messages.append({"role": "assistant", "content": response})
