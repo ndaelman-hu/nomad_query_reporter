@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 import requests
 import sys
 import time
@@ -35,7 +36,20 @@ nomad_params = {
             }
         }
     }
-}  # ? vector embedding of query responses
+}
+
+def get_leaf_nodes(data, path=None):
+    if path is None:
+        path = []
+    
+    if isinstance(data, dict):
+        for key, value in data.items():
+            yield from get_leaf_nodes(value, path + [key])
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            yield from get_leaf_nodes(item, path + [i])
+    else:
+        yield path, data
 
 def llama_complete(llama_prompt: dict[str, str]) -> dict[str, str]:
     llama_prompt['model'] = "llama3:70b"
@@ -53,17 +67,20 @@ def llama_response_to_list(llama_response: dict[str, str]) -> list[dict[str, str
     return json.loads(llama_response.content.decode('ascii').strip())['message']['content']
 
 # Check if the NOMAD query was successful
-nomad_results, nomad_metadata = [], []
+nomad_df_header = []
+nomad_df_body = []
 trial_counter, max_trials = 0, 10
 while True:
     nomad_response = requests.post(nomad_url, json=nomad_params)
     trial_counter += 1
     if nomad_response.status_code == 200:
         nomad_data = nomad_response.json()
+        for entry in nomad_data['data']:
+            nomad_df_body.append([value for _, value in get_leaf_nodes(entry["archive"])])
+        if nomad_df_header == []:
+            nomad_df_header = [".".join(map(str, path)) for path, _ in get_leaf_nodes(entry["archive"])]
         if (next_page := nomad_data['pagination'].get('next_page_after_value', '')):
             nomad_params["pagination"]["page_after_value"] = next_page
-            nomad_results.extend([entry["archive"]['results'] for entry in nomad_data['data']])
-            nomad_metadata.extend([entry["archive"]['metadata'] for entry in nomad_data['data']])
             trial_counter = 0 # reset the trial counter
         else:
             break
@@ -76,7 +93,7 @@ while True:
     else:
         print("Failed to query NOMAD:", nomad_response.text)
         sys.exit(1)  # ! add error handling
-print(f"Found {len(nomad_results)} results in NOMAD for upload_id {upload_id}. Analyzing...")
+print(f"Found {len(nomad_df_body)} results in NOMAD for upload_id {upload_id}. Analyzing...")
 
 # Push a llama query
 llama_url = "http://172.28.105.30/backend/api/chat"
@@ -95,16 +112,15 @@ llama_init_params = {
             "role": "user",
             "content": """
                 Write me a Methods section for a paper draft.
-                Here is a json response from the database API:
+                Here is a response from the database API:
             """.strip().replace("\n", ""),
         },
+        {
+            "role": "user",
+            "content": str(pd.DataFrame(nomad_df_body, columns=nomad_df_header).describe(include="all")),
+        }
     ]  
 }
-for nomad_result in nomad_results:
-    llama_init_params["messages"].append({
-        "role": "user",
-        "content": str(nomad_result),
-    })
 
 llama_citation = {
     "prompt": """
@@ -118,8 +134,7 @@ llama_init_response = requests.post(llama_url, json=llama_complete(llama_init_pa
 
 # Check if the llama query was successful
 if llama_init_response.status_code == 200:
-    llama_init_data = llama_response_to_list(llama_init_response)
-    print(''.join([x["response"] for x in llama_init_data]))
+    print(llama_response_to_list(llama_init_response))
 else:
     print("Failed to push llama query:", llama_init_response.text)
 
