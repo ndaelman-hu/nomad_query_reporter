@@ -32,7 +32,7 @@ def llama_inject_context(llama_prompt: dict[str, str], llama_responses: list[dic
     return llama_prompt
 
 def llama_response_to_list(llama_response: dict[str, str]) -> list[dict[str, str]]:
-    return json.loads(llama_response.content.decode('ascii').strip())['message']['content']
+    return json.loads(llama_response.content.decode('utf-8').strip())['message']['content'] # check for ascii or utf-8
 
 def query_nomad(upload_id: str):
     if re.match(r"^[a-zA-Z0-9_-]{22}$", upload_id) is None:
@@ -42,8 +42,8 @@ def query_nomad(upload_id: str):
     nomad_params = {
         "query": {"upload_id": upload_id},
         "pagination": {
-                "page_size": 1e2,  # 1e4 is the max supported by NOMAD
-            },
+            "page_size": 1e2,  # 1e4 is the max supported by NOMAD
+        },
         "required": {
             "resolve-inplace": True,
             "metadata": {
@@ -65,12 +65,13 @@ def query_nomad(upload_id: str):
                         "program_version": "*",
                     },
                 }
-            }
+            },
+            "data": "*"
         }
     }
 
     # Check if the NOMAD query was successful
-    nomad_df_header, nomad_df_body = [], []
+    nomad_df = pd.DataFrame()
     trial_counter, max_trials = 0, 10
     first_pass, total_hits = True, 0
     while True:
@@ -85,10 +86,9 @@ def query_nomad(upload_id: str):
                 first_pass = False
             # Mangle data
             for entry in nomad_data['data']:
-                nomad_df_body.append([value for _, value in get_leaf_nodes(entry["archive"])])
-            if nomad_df_header == []:
-                nomad_df_header = [".".join(map(str, path)) for path, _ in get_leaf_nodes(entry["archive"])]
-            print(f"Accumulated {len(nomad_df_body)}/{total_hits} entries thus far.")    
+                nomad_df_entry = pd.json_normalize(entry["archive"])
+                nomad_df = pd.concat([nomad_df, nomad_df_entry], ignore_index=True, sort=False)
+            print(f"Accumulated {len(nomad_df)}/{total_hits} entries thus far.")
             if (next_page := nomad_data['pagination'].get('next_page_after_value', '')):
                 nomad_params["pagination"]["page_after_value"] = next_page
                 trial_counter = 0 # reset the trial counter
@@ -104,12 +104,17 @@ def query_nomad(upload_id: str):
             print("Failed to query NOMAD:", nomad_response.text)
             sys.exit(1)  # ! add error handling
     print(f"Download completed. Analyzing...")
-    return nomad_df_header, nomad_df_body
+
+    return nomad_df
+
 
 def report_on_upload(upload_id: str):
-    nomad_df_header, nomad_df_body = query_nomad(upload_id)
-    nomad_df = pd.DataFrame(nomad_df_body, columns=nomad_df_header)
+    nomad_df = query_nomad(upload_id)
     print(nomad_df.describe(include="all"))
+
+    nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)
+    column_dict = nomad_df.to_dict(orient='list')
+    print(column_dict)
 
     # Push a llama query
     llama_url = "http://172.28.105.30/backend/api/chat"
@@ -118,22 +123,26 @@ def report_on_upload(upload_id: str):
             {
                 "role": "system",
                 "content": """
-                    You are a data analyst, summarizing data from a database.
+                    You are a data analyst, summarizing data from experimental samples.
                     You give me short (max 250 words) responses to my prompts.
+                    You only write full sentences and no bullet points.
                     You stay on-topic and provide relevant information.
                     No disclaimer or suggestions for improvements.
+                    Ignore input data that is Unknown and do not write about unknown or nan values.
                 """.strip().replace("\n", ""),
             },
             {
                 "role": "user",
                 "content": """
-                    Write me a Methods section for a paper draft.
-                    Here is a response from the database API:
+                    Formulate the full method section for a scientific publication used to describe the sample fabrication and characterization.
+                    Write full sentences. 
+                    Focus on process steps and used parameters which these processes have in common.
+                    Here is the data you can use:
                 """.strip().replace("\n", ""),
             },
             {
                 "role": "user",
-                "content": str(nomad_df.describe(include="all")),
+                "content": str(nomad_df.describe(include='all')),
             }
         ]  
     }
