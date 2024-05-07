@@ -95,6 +95,9 @@ while True:
         sys.exit(1)  # ! add error handling
 print(f"Found {len(nomad_df_body)} results in NOMAD for upload_id {upload_id}. Analyzing...")
 
+nomad_df = pd.DataFrame(nomad_df_body, columns=nomad_df_header)
+print(nomad_df.describe(include="all"))
+
 # Push a llama query
 llama_url = "http://172.28.105.30/backend/api/chat"
 llama_init_params = {
@@ -117,7 +120,7 @@ llama_init_params = {
         },
         {
             "role": "user",
-            "content": str(pd.DataFrame(nomad_df_body, columns=nomad_df_header).describe(include="all")),
+            "content": str(nomad_df.describe(include="all")),
         }
     ]  
 }
