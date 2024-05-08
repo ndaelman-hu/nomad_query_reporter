@@ -4,6 +4,7 @@ import pandas as pd
 import requests
 import sys
 import time
+import html2text
 
 # Helper functions
 def get_leaf_nodes(data, path=None):
@@ -34,39 +35,35 @@ def llama_inject_context(llama_prompt: dict[str, str], llama_responses: list[dic
 def llama_response_to_list(llama_response: dict[str, str]) -> list[dict[str, str]]:
     return json.loads(llama_response.content.decode('utf-8').strip())['message']['content'] # check for ascii or utf-8
 
+
+def get_token(url, name=None):
+    user = "pepe_marquez"
+    password = "xxxxxx"
+
+    # Get a token from the api, login
+    response = requests.get(
+        f'{url}/auth/token', params=dict(username=user, password=password))
+    return response.json()['access_token']
+
 def query_nomad(upload_id: str):
     if re.match(r"^[a-zA-Z0-9_-]{22}$", upload_id) is None:
         raise ValueError("Invalid upload ID")
 
-    nomad_url = "https://nomad-lab.eu/prod/v1/api/v1/entries/archive/query"  # ! add support for stagging
+    nomad_url = "https://nomad-hzb-se.de/nomad-oasis/api/v1"  # ! add support for stagging
+    token = get_token(nomad_url)
+
+    entry_id = "zxGAwm2x40wPpeMt9HDlE9CptBvG"
+
     nomad_params = {
-        "query": {"upload_id": upload_id},
+        "query": {"upload_id": upload_id, "entry_type": "HySprint_ExperimentalPlan"},
+        'owner': 'visible',
         "pagination": {
             "page_size": 1e2,  # 1e4 is the max supported by NOMAD
         },
         "required": {
-            "resolve-inplace": True,
-            "metadata": {
-                "datasets": {
-                    "doi": "*",
-                },
-            },
-            "results": {
-                "material": {
-                    "material_name": "*",
-                    "chemical_formula_iupac": "*",
-                    "symmetry": "*",
-                },
-                "method": {
-                    "method_name": "*",
-                    "workflow_name": "*",
-                    "simulation": {
-                        "program_name": "*",
-                        "program_version": "*",
-                    },
-                }
-            },
-            "data": "*"
+            "data": {
+                "description" : "*"
+            }
         }
     }
 
@@ -75,7 +72,7 @@ def query_nomad(upload_id: str):
     trial_counter, max_trials = 0, 10
     first_pass, total_hits = True, 0
     while True:
-        nomad_response = requests.post(nomad_url, json=nomad_params)
+        nomad_response = requests.post(f'{nomad_url}/entries/archive/query', headers={'Authorization': f'Bearer {token}'}, json=nomad_params)
         trial_counter += 1
         if nomad_response.status_code == 200:
             nomad_data = nomad_response.json()
@@ -112,9 +109,20 @@ def report_on_upload(upload_id: str):
     nomad_df = query_nomad(upload_id)
     print(nomad_df.describe(include="all"))
 
-    nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)
-    column_dict = nomad_df.to_dict(orient='list')
-    print(column_dict)
+    #nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)
+    #column_dict = nomad_df.to_dict(orient='list')
+    #print(column_dict)
+
+    #print(nomad_df.iloc[0]['data.description'])
+
+    plain_text = html2text.html2text(nomad_df.iloc[0]['data.description'])
+    plain_text = plain_text.replace("**","")
+    list_of_text = plain_text.split('###')
+
+
+
+    print(plain_text)
+    print(len(plain_text.split()))
 
     # Push a llama query
     llama_url = "http://172.28.105.30/backend/api/chat"
@@ -123,29 +131,34 @@ def report_on_upload(upload_id: str):
             {
                 "role": "system",
                 "content": """
-                    You are a data analyst, summarizing data from experimental samples.
+                    From now on, you are a data scientist, summarizing data from experimental samples.
                     You give me short (max 250 words) responses to my prompts.
                     You only write full sentences and no bullet points.
                     You stay on-topic and provide relevant information.
                     No disclaimer or suggestions for improvements.
-                    Ignore input data that is Unknown and do not write about unknown or nan values.
+                    Under no circumstances you should make stuff up.
                 """.strip().replace("\n", ""),
             },
             {
                 "role": "user",
                 "content": """
-                    Formulate the full method section for a scientific publication used to describe the sample fabrication and characterization.
-                    Write full sentences. 
-                    Focus on process steps and used parameters which these processes have in common.
-                    Here is the data you can use:
+                    The following is experimental data from an electronic lab book which is available for
+                    the processes used to fabricate this batch of samples:
                 """.strip().replace("\n", ""),
-            },
-            {
-                "role": "user",
-                "content": str(nomad_df.describe(include='all')),
             }
-        ]  
-    }
+        ]}
+    for element in list_of_text:
+        llama_init_params['messages'].append({
+            "role": "user",
+            "content": element
+        })
+    llama_init_params['messages'].append({
+        "role": "user",
+        "content": """
+            Formulate the full method section for a scientific publication used to describe the sample fabrication and characterization.
+            Write full sentences. Focus on process steps and used parameters which these processes have in common.
+            """.strip().replace("\n", ""),
+    })
 
     llama_citation = {
         "prompt": """
