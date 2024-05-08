@@ -47,14 +47,25 @@ def main(
         nomad_complete_prompt(f"{nq_dir}/{nomad_query_type}.json"),
         {id_type: ids},
     )
-    nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe, use_streamlit=use_streamlit)
-    nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)  # ! re-evaluate
+    if nomad_query_type == "computational":
+        nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe, use_streamlit=use_streamlit)
+        # nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)  # ! re-evaluate
+        llama_prompt = str(
+            {
+                "attributes": nomad_df.columns,
+                "method": nomad_df[filter_by_column(nomad_df, r"results\.method\..*").keys()].to_string(),
+                "software": nomad_df["results.method.simulation.program_name"].unique,
+                "material": nomad_df["results.material.chemical_formula_iupac"].unique,
+            }
+        )  # nomad_df.to_string()
+    else:
+        print("Invalid NOMAD query type.")
 
     # Query LLAMA
     if llama_query_type:
         llama_params = substitute_tags(
             llama_complete_prompt(f"{lq_dir}/{llama_query_type}.json"),
-            {"prompt": str(nomad_df.describe(include='all'))},
+            {"prompt": llama_prompt},
         )
         if use_streamlit:
             llama_status = st.status("Sending query to LLAMA …")
@@ -69,7 +80,7 @@ def main(
             print("Failed to push llama query:", llama_response.text)
             sys.exit(1)
     else:
-        print(nomad_df)
+        print(llama_prompt)
 
 
 if __name__ == "__main__":
@@ -78,8 +89,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("nomad_query_type", help="Type of NOMAD query to perform (e.g. `computational`)")
     ap.add_argument("--llama_query_type", "--lq", default="", help="Type of LLAMA query to perform (e.g. `computational`)")
-    ap.add_argument("--upload_id", "-u", default=[], nargs="*", help="ID of the upload to query in NOMAD (e.g. If6n8Mv2TamLe98nUFmnIA)")
-    ap.add_argument("--entry_id", "-e", default=[],  nargs="*", help="ID of the entry to query in NOMAD (e.g. 5f6e8b4b9b7e4b0001f7b1d4)")
+    ap.add_argument("--upload_id", "-u", default=[], nargs="*", help="ID of the upload to query in NOMAD (e.g. `If6n8Mv2TamLe98nUFmnIA`)")
+    ap.add_argument("--entry_id", "-e", default=[],  nargs="*", help="ID of the entry to query in NOMAD (e.g. `5f6e8b4b9b7e4b0001f7b1d4`)")
     args = ap.parse_args()  # ! add credentials
 
     main(args.nomad_query_type, args.llama_query_type, args.upload_id, args.entry_id)

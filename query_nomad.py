@@ -1,4 +1,5 @@
 import json
+import re
 import pandas as pd
 import requests
 import sys
@@ -25,6 +26,22 @@ def extend_dataframe(data, starting_df):
     return starting_df
 
 
+def filter_by_column(df: pd.DataFrame, regex_str: str) -> pd.DataFrame:
+    groups = {}
+
+    pattern = re.compile(regex_str)
+    for column in df.columns:
+        match = pattern.search(column)
+        if match:
+            key = match.group()  # This extracts the substring
+            if key in groups:
+                groups[key].append(column)
+            else:
+                groups[key] = [column]
+
+    return groups
+
+
 def ping_nomad(
     query: dict[str, any],
     nomad_url: str,
@@ -43,9 +60,11 @@ def ping_nomad(
         progress_bar = st.progress(0.0, progress_bar_text)
 
         message = st.chat_message('assistant')
-        def print(*args, **kwargs):
+        def echo(*args, **kwargs):
             message.write(*args, **kwargs)
-                
+    else:
+        def echo(*args, **kwargs):
+            print(*args, **kwargs)
 
     while True:
         nomad_response = requests.post(nomad_url, json=query)
@@ -56,10 +75,10 @@ def ping_nomad(
             # Update progress
             if first_pass:
                 total_hits = nomad_data['pagination']['total']
-                print(f"Found {total_hits} entries matching the query. Commencing download...")
+                echo(f"Found {total_hits} entries matching the query. Commencing download...")
                 first_pass = False
             final_data = converter(nomad_data, final_data)  # Convert data
-            print(f"Accumulated {len(final_data)}/{total_hits} entries thus far.")
+            echo(f"Accumulated {len(final_data)}/{total_hits} entries thus far.")
             if use_streamlit:
                 progress_bar.progress(len(final_data) / total_hits, progress_bar_text)
             # Prepare next step
@@ -70,15 +89,15 @@ def ping_nomad(
                 break
         # No. trials exceeded
         elif trial_counter >= max_trials:
-            print(f"Failed to query NOMAD after {max_trials} trials.")
+            echo(f"Failed to query NOMAD after {max_trials} trials.")
             sys.exit(1)
         # Limit reached
         elif nomad_response.status_code in (502, 503):
-            print("Retrying query to NOMAD...")
+            echo("Retrying query to NOMAD...")
             time.sleep(sleep_time)
         # Other kinds of warnings
         else:
-            print("Failed to query NOMAD:", nomad_response.text)
+            echo("Failed to query NOMAD:", nomad_response.text)
             sys.exit(1)
-    print("Download completed. Analyzing...")
+    echo("Download completed. Analyzing...")
     return final_data
