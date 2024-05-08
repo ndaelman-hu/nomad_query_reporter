@@ -58,7 +58,7 @@ def ping_nomad(
                 print(f"Found {total_hits} entries matching the query. Commencing download...")
                 first_pass = False
             final_data = converter(nomad_data, final_data)  # Convert data
-            print(f"Accumulated {len(nomad_data['data'])}/{total_hits} entries thus far.")
+            print(f"Accumulated {len(final_data)}/{total_hits} entries thus far.")
             if use_streamlit:
                 progress_bar.progress(len(final_data) / total_hits)
             # Prepare next step
