@@ -22,13 +22,18 @@ def leafs_to_df(leafs):
     )
 
 def substitute_tags(obj, params: dict[str, any]):
+    # Handle string substitution, checking for tags enclosed in < >
     if isinstance(obj, str):
-        # Substitute tags in strings
         if obj.startswith("<") and obj.endswith(">"):
             key = obj[1:-1]
             return params[key]
         return obj
+    # Handle dictionaries by applying substitution to each value
     elif isinstance(obj, dict):
         return {key: substitute_tags(value, params) for key, value in obj.items()}
+    # Handle lists by applying substitution to each element
+    elif isinstance(obj, list):
+        return [substitute_tags(item, params) for item in obj]
+    # Return the object as is if it does not match the above types
     else:
         return obj
