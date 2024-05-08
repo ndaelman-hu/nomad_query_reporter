@@ -1,4 +1,5 @@
 import json
+import re
 import pandas as pd
 import requests
 import sys
@@ -23,6 +24,22 @@ def extend_dataframe(data, starting_df):
         entry_df = leafs_to_df(get_leaf_nodes(entry["archive"]))
         starting_df = pd.concat([starting_df, entry_df], ignore_index=True, sort=False)
     return starting_df
+
+
+def filter_by_column(df: pd.DataFrame, regex_str: str) -> pd.DataFrame:
+    groups = {}
+
+    pattern = re.compile(regex_str)
+    for column in df.columns:
+        match = pattern.search(column)
+        if match:
+            key = match.group()  # This extracts the substring
+            if key in groups:
+                groups[key].append(column)
+            else:
+                groups[key] = [column]
+
+    return groups
 
 
 def ping_nomad(
