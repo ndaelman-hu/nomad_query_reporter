@@ -23,6 +23,8 @@ def main(
     llama_query_type: str="",
     upload_id: list[str]=[],
     entry_id: list[str]=[],
+    *,
+    use_streamlit: bool=False
 ):
     # Read IDs
     ids, id_type = [], ""
@@ -45,7 +47,7 @@ def main(
         nomad_complete_prompt(f"{nq_dir}/{nomad_query_type}.json"),
         {id_type: ids},
     )
-    nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe)
+    nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe, use_streamlit=use_streamlit)
     nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)  # ! re-evaluate
 
     # Query LLAMA
@@ -54,10 +56,16 @@ def main(
             llama_complete_prompt(f"{lq_dir}/{llama_query_type}.json"),
             {"prompt": str(nomad_df.describe(include='all'))},
         )
+        if use_streamlit:
+            llama_status = st.status("Sending query to LLAMA …")
         llama_response = requests.post(llama_url, json=llama_params)
         if llama_response.status_code == 200:
+            if use_streamlit:
+                llama_status.update(label="LLAMA query successful.", state="complete")
             print(llama_response_to_list(llama_response))
         else:
+            if use_streamlit:
+                llama_status.update(label="Failed to push LLAMA query.", state="error")
             print("Failed to push llama query:", llama_response.text)
             sys.exit(1)
     else:

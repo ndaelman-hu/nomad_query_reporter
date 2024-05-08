@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import sys
 import time
+import streamlit as st
 
 from utils import get_leaf_nodes, leafs_to_df
 
@@ -30,10 +31,20 @@ def ping_nomad(
     converter: callable,
     max_trials: int = 10,
     sleep_time: int = 10,
+    *,
+    use_streamlit: bool = False
 ) -> pd.DataFrame:
     """Ping NOMAD with a query and convert the results to a DataFrame."""
     final_data = pd.DataFrame()
     trial_counter, first_pass, total_hits = 0, True, 0
+
+    if use_streamlit:
+        progress_bar = st.progress(0.0, "Downloading data from NOMAD...")
+
+        message = st.chat_message('assistant')
+        def print(*args, **kwargs):
+            message.write(*args, **kwargs)
+                
 
     while True:
         nomad_response = requests.post(nomad_url, json=query)
@@ -48,6 +59,8 @@ def ping_nomad(
                 first_pass = False
             final_data = converter(nomad_data, final_data)  # Convert data
             print(f"Accumulated {len(nomad_data['data'])}/{total_hits} entries thus far.")
+            if use_streamlit:
+                progress_bar.progress(len(final_data) / total_hits)
             # Prepare next step
             if (next_page := nomad_data['pagination'].get('next_page_after_value', '')):
                 query["pagination"]["page_after_value"] = next_page

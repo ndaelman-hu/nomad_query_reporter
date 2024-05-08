@@ -52,6 +52,7 @@ if prompt := st.chat_input("What is the upload id? Use commas to separate multip
             query_option_map[query_type][0],
             llama_query_type=query_option_map[query_type][1],
             upload_id=[prompt],
+            use_streamlit=True
         )
     response = buffer.getvalue()
 
