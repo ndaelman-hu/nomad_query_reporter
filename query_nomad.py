@@ -39,7 +39,8 @@ def ping_nomad(
     trial_counter, first_pass, total_hits = 0, True, 0
 
     if use_streamlit:
-        progress_bar = st.progress(0.0, "Downloading data from NOMAD...")
+        progress_bar_text = 'Downloading data from NOMAD …'
+        progress_bar = st.progress(0.0, progress_bar_text)
 
         message = st.chat_message('assistant')
         def print(*args, **kwargs):
@@ -60,7 +61,7 @@ def ping_nomad(
             final_data = converter(nomad_data, final_data)  # Convert data
             print(f"Accumulated {len(final_data)}/{total_hits} entries thus far.")
             if use_streamlit:
-                progress_bar.progress(len(final_data) / total_hits)
+                progress_bar.progress(len(final_data) / total_hits, progress_bar_text)
             # Prepare next step
             if (next_page := nomad_data['pagination'].get('next_page_after_value', '')):
                 query["pagination"]["page_after_value"] = next_page
