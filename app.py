@@ -22,7 +22,9 @@ def _fix_streamlit_space(text: str) -> str:
     return re.sub(r"( ?)\n", _replacement, text)
 
 
-st.title("NOMAD Query Reporter")
+st.image('nomad-horizontal.svg', width=300)
+st.title('NOMAD Query Reporter')
+
 
 # Query selector
 button_clicked = st.button("query type")
