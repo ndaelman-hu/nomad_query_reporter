@@ -4,7 +4,7 @@ import re
 
 import streamlit as st
 
-from backend import report_on_upload
+from backend import main
 
 
 def _fix_streamlit_space(text: str) -> str:
@@ -31,13 +31,13 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-if prompt := st.chat_input("What is the upload id?"):
+if prompt := st.chat_input("What is the upload id?\nUse comma to separate multiple."):
     with st.chat_message("user"):
         st.write(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     with redirect_stdout(io.StringIO()) as buffer:
-        report_on_upload(prompt)
+        main('computational', llama_query_type="computational", upload_id=[prompt])
     response = buffer.getvalue()
 
     with st.chat_message("Reporter"):
