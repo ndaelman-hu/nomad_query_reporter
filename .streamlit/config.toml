@@ -1,0 +1,6 @@
+[theme]
+primaryColor="#2A4CDF"
+backgroundColor="#EAEDFC"
+secondaryBackgroundColor="#F0F2F6"
+textColor="#212121"
+font="sans serif"  # Doc: Valid values are "sans serif", "serif", and "monospace"
