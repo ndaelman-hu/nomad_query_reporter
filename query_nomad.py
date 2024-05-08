@@ -24,6 +24,15 @@ def extend_dataframe(data, starting_df):
     return starting_df
 
 
+def get_token(url, name=None):
+    user = "pepe_marquez"
+    password = "llm-hack"
+
+    # Get a token from the api, login
+    response = requests.get(
+        f'{url}/auth/token', params=dict(username=user, password=password))
+    return response.json()['access_token']
+
 def ping_nomad(
     query: dict[str, any],
     nomad_url: str,
@@ -35,8 +44,11 @@ def ping_nomad(
     final_data = pd.DataFrame()
     trial_counter, first_pass, total_hits = 0, True, 0
 
+    nomad_url = "https://nomad-hzb-se.de/nomad-oasis/api/v1"  # ! add support for stagging
+    token = get_token(nomad_url)
+
     while True:
-        nomad_response = requests.post(nomad_url, json=query)
+        nomad_response = requests.post(f'{nomad_url}/entries/archive/query', headers={'Authorization': f'Bearer {token}'}, json=query)
         trial_counter += 1
         # Successful query
         if nomad_response.status_code == 200:
