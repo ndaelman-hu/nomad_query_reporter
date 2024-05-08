@@ -37,6 +37,7 @@ def ping_nomad(
     query: dict[str, any],
     nomad_url: str,
     converter: callable,
+    query_type: str,
     max_trials: int = 10,
     sleep_time: int = 10,
 ) -> pd.DataFrame:
@@ -44,10 +45,15 @@ def ping_nomad(
     final_data = pd.DataFrame()
     trial_counter, first_pass, total_hits = 0, True, 0
 
-    token = get_token(nomad_url)
+    if query_type == "experimental":
+        token = get_token(nomad_url)
 
     while True:
-        nomad_response = requests.post(f'{nomad_url}/entries/archive/query', headers={'Authorization': f'Bearer {token}'}, json=query)
+        if query_type == "experimental":
+            nomad_response = requests.post(f'{nomad_url}/entries/archive/query', headers={'Authorization': f'Bearer {token}'}, json=query)
+        else:
+            nomad_response = requests.post(nomad_url, json=query)
+
         trial_counter += 1
         # Successful query
         if nomad_response.status_code == 200:

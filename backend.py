@@ -48,7 +48,8 @@ def main(
     )
     if args.nomad_query_type == "experimental":
         nomad_url = "https://nomad-hzb-se.de/nomad-oasis/api/v1"  # ! add support for stagging
-    nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe)
+
+    nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe, args.nomad_query_type)
 
     if args.nomad_query_type == "experimental":
         #nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)  # ! re-evaluate
