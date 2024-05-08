@@ -24,6 +24,17 @@ def _fix_streamlit_space(text: str) -> str:
 
 st.title("NOMAD Query Reporter")
 
+# Query selector
+button_clicked = st.button("query type")
+query_options = ["computational"]
+query_option_map = {"computational": ("computational", "computational")}
+
+default_index = 0
+query_type = query_options[default_index]
+if button_clicked:
+    query_type = st.selectbox("Select an option", query_options, index=default_index)
+
+# Chat
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -31,13 +42,17 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-if prompt := st.chat_input("What is the upload id?\nUse comma to separate multiple."):
+if prompt := st.chat_input("What is the upload id? Use commas to separate multiple."):
     with st.chat_message("user"):
         st.write(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     with redirect_stdout(io.StringIO()) as buffer:
-        main('computational', llama_query_type="computational", upload_id=[prompt])
+        main(
+            query_option_map[query_type][0],
+            llama_query_type=query_option_map[query_type][1],
+            upload_id=[prompt],
+        )
     response = buffer.getvalue()
 
     with st.chat_message("Reporter"):
