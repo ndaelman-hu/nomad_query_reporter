@@ -1,6 +1,7 @@
 import re
 import requests
 import sys
+import html2text
 
 from query_llama import *
 from query_nomad import *
@@ -46,14 +47,29 @@ def main(
         {id_type: ids},
     )
     nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe)
-    nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)  # ! re-evaluate
+
+    if args.nomad_query_type == "experimental":
+        #nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)  # ! re-evaluate
+        plain_text = html2text.html2text(nomad_df.iloc[0]['data.description'])
+        plain_text = plain_text.replace("**", "")
+        plain_text = plain_text.replace("\----------start summary----------","")
+        plain_text = plain_text.replace("\----------end summary----------", "")
+
+        nomad_df.iloc[0]['data.description'] = plain_text
 
     # Query LLAMA
-    if llama_query_type:
-        llama_params = substitute_tags(
-            llama_complete_prompt(f"{lq_dir}/{llama_query_type}.json"),
-            {"prompt": str(nomad_df.describe(include='all'))},
-        )
+    if args.llama_query_type:
+        if args.llama_query_type == "experimental":
+            print(nomad_df.iloc[0]['data.description'])
+            llama_params = substitute_tags(
+                llama_complete_prompt(f"{lq_dir}/{args.llama_query_type}.json"),
+                {"prompt": str(nomad_df.iloc[0]['data.description'])},
+            )
+        elif args.llama_query_type == "computational":
+            llama_params = substitute_tags(
+                llama_complete_prompt(f"{lq_dir}/{args.llama_query_type}.json"),
+                {"prompt": str(nomad_df.describe(include='all'))},
+            )
         llama_response = requests.post(llama_url, json=llama_params)
         if llama_response.status_code == 200:
             print(llama_response_to_list(llama_response))
