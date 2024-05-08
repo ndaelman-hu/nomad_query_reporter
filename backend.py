@@ -6,7 +6,7 @@ from query_llama import *
 from query_nomad import *
 from utils import substitute_tags
 
-nomad_url = "https://nomad-lab.eu/prod/v1/api/v1/entries/archive/query"
+nomad_url = "https://nomad-lab.eu/prod/v1/staging/api/v1/entries/archive/query"
 llama_url = "http://172.28.105.30/backend/api/chat"
 nq_dir, lq_dir = "nomad_queries/", "llama_queries/"
 
@@ -46,7 +46,7 @@ def main(
         {id_type: ids},
     )
     nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe)
-    # nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)  # ! re-evaluate
+    nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)  # ! re-evaluate
 
     # Query LLAMA
     if llama_query_type:
@@ -72,6 +72,6 @@ if __name__ == "__main__":
     ap.add_argument("--llama_query_type", "--lq", default="", help="Type of LLAMA query to perform (e.g. `computational`)")
     ap.add_argument("--upload_id", "-u", default=[], nargs="*", help="ID of the upload to query in NOMAD (e.g. If6n8Mv2TamLe98nUFmnIA)")
     ap.add_argument("--entry_id", "-e", default=[],  nargs="*", help="ID of the entry to query in NOMAD (e.g. 5f6e8b4b9b7e4b0001f7b1d4)")
-    args = ap.parse_args()
+    args = ap.parse_args()  # ! add credentials
 
     main(args.nomad_query_type, args.llama_query_type, args.upload_id, args.entry_id)
