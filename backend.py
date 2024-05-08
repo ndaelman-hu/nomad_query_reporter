@@ -46,6 +46,8 @@ def main(
         nomad_complete_prompt(f"{nq_dir}/{nomad_query_type}.json"),
         {id_type: ids},
     )
+    if args.nomad_query_type == "experimental":
+        nomad_url = "https://nomad-hzb-se.de/nomad-oasis/api/v1"  # ! add support for stagging
     nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe)
 
     if args.nomad_query_type == "experimental":
@@ -54,17 +56,18 @@ def main(
         plain_text = plain_text.replace("**", "")
         plain_text = plain_text.replace("\----------start summary----------","")
         plain_text = plain_text.replace("\----------end summary----------", "")
-
-        nomad_df.iloc[0]['data.description'] = plain_text
+        plain_text = plain_text.replace("\n", "")
+        list_of_text = plain_text.split('###')
+        nomad_df.iloc[0]['data.description'] = list_of_text
 
     # Query LLAMA
     if args.llama_query_type:
         if args.llama_query_type == "experimental":
             print(nomad_df.iloc[0]['data.description'])
-            llama_params = substitute_tags(
-                llama_complete_prompt(f"{lq_dir}/{args.llama_query_type}.json"),
-                {"prompt": str(nomad_df.iloc[0]['data.description'])},
-            )
+            llama_params = llama_complete_prompt(f"{lq_dir}/{args.llama_query_type}.json")
+            for data_prompt in nomad_df.iloc[0]['data.description']:
+                llama_params['messages'].append({"role": "user", "content": data_prompt})
+                llama_params['messages'].append({"role": "user", "content": "Keep this in mind and combine it with the following data."})
         elif args.llama_query_type == "computational":
             llama_params = substitute_tags(
                 llama_complete_prompt(f"{lq_dir}/{args.llama_query_type}.json"),

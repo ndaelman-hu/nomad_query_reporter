@@ -44,7 +44,6 @@ def ping_nomad(
     final_data = pd.DataFrame()
     trial_counter, first_pass, total_hits = 0, True, 0
 
-    nomad_url = "https://nomad-hzb-se.de/nomad-oasis/api/v1"  # ! add support for stagging
     token = get_token(nomad_url)
 
     while True:

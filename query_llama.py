@@ -3,7 +3,7 @@ from typing import Optional
 
 def llama_complete_prompt(
     query_file: str,
-    temperature: float = 0,
+    temperature: float = 0.01,
     seed: Optional[int] = 42,
 ) -> dict[str, str]:
     """Complete a prompt for the llama model."""

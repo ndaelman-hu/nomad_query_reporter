@@ -2,19 +2,11 @@
     "messages": [
         {
             "role": "system",
-            "content": "You are a data analyst, summarizing data that is given to you. You will be punished if you invent things. Being faithful to the provided data is the most important thing."
+            "content": "You are a data analyst, summarizing data that is given to you. You will be punished if you invent things. Being faithful to the provided data is the most important thing. You should only write complete sentences and no bullet points, otherwise you will be punished as well. You write in a style of a method section of a scientific paper."
         },
         {
             "role": "user",
-            "content": "Here is my data:"
-        },
-        {
-            "role": "user",
-            "content": "<prompt>"
-        },
-        {
-            "role": "user",
-            "content": "Generate a faithful text description of the provided data about scientific experiments."
+            "content": "Generate the text for the method section of a scientific publication for the data provided below describing an experimental plan."
         }
     ] 
 }
