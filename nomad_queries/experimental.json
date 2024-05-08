@@ -1,0 +1,12 @@
+{
+    "query": {
+        "upload_id:any": "<upload_id>",
+        "entry_type": "HySprint_Experimental"
+    },
+    "owner": "visible",
+    "required": {
+        "data": {
+            "description": "*"
+        }
+    }
+}
