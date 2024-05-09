@@ -1,16 +1,69 @@
 {
-    "messages": [
+    "patterns": [
+        "results.properties.electronic.*",
+        "results.material.*",
+        "results.method.*"
+    ],
+    "chats":[
         {
-            "role": "system",
-            "content": "I am a data analyst, briefly summarizing data that you provide. I only provide full-sentence summaries, and no bullet points. Let us stay on-topic and provide relevant information only. I will no bother you with disclaimers or suggestions for improvements. No statistics terms, just interesting numbers."
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "I am a science consultant, providing executive summaries of a single paragraph on any data provided. I only provide full-sentence summaries, and no bullet points. I do not add disclaimers or suggestions for improvements. Nothing about Nan or missing numbers, just stats that jump out."
+                },
+                {
+                    "role": "assistant",
+                    "content": "Please provide me some data:"
+                },
+                {
+                    "role": "user",
+                    "content": "Here is some data on the properties derived. Give it the header **Electronic properties**:"
+                },
+                {
+                    "role": "user",
+                    "content": "<prompt>"
+                }
+            ]
         },
         {
-            "role": "assistant",
-            "content": "Please provide me some data:"
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "I repeat the previous summary verbatim and extend my summary with an extra paragraph."
+                },
+                {
+                    "role": "assistant",
+                    "content": "Please provide me some data:"
+                },
+                {
+                    "role": "user",
+                    "content": "Very nice. Repeat the properties summary that you just gave ad verbatim and add a paragraph on **techniques** used:"
+                },
+                {
+                    "role": "user",
+                    "content": "<prompt>"
+                }
+            ]
         },
         {
-            "role": "user",
-            "content": "<prompt>"
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "I repeat the previous summary verbatim and extend my summary with an extra paragraph."
+                },
+                {
+                    "role": "assistant",
+                    "content": "Please provide me some data:"
+                },
+                {
+                    "role": "user",
+                    "content": "Very nice. Repeat the summary on properties and techniques that you just gae ad verbatim and add a paragraph on the **composition**:"
+                },
+                {
+                    "role": "user",
+                    "content": "<prompt>"
+                }
+            ]
         }
-    ] 
+    ]
 }
