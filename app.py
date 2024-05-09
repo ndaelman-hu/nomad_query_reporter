@@ -25,16 +25,13 @@ def _fix_streamlit_space(text: str) -> str:
 st.image('nomad-horizontal.svg', width=300)
 st.title('NOMAD Query Reporter')
 
-
 # Query selector
-button_clicked = st.button("query type")
 query_options = ["verbose", "executive summary"]
 query_option_map = {"verbose": ("computational", "computational"), "executive summary": ("computational_short", "computational_short")}
 
-default_index = 0
-query_type = query_options[default_index]
-if button_clicked:
-    query_type = st.selectbox("Select an option", query_options)
+query_type = st.selectbox("select your query type", query_options, index=0)
+st.session_state.query_type = query_type
+query_option = query_option_map[st.session_state.get("query_type", "verbose")]
 
 # Chat
 if "messages" not in st.session_state:
@@ -51,10 +48,10 @@ if prompt := st.chat_input("What is the upload id? Use commas to separate multip
 
     with redirect_stdout(io.StringIO()) as buffer:
         main(
-            query_option_map[query_type][0],
-            llama_query_type=query_option_map[query_type][1],
+            query_option[0],
+            llama_query_type=query_option[1],
             upload_id=[prompt],
-            use_streamlit=True
+            use_streamlit=True,
         )
     response = buffer.getvalue()
 
