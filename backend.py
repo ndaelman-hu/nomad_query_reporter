@@ -43,14 +43,16 @@ def main(
         sys.exit(1)
 
     # Query NOMAD
-    nomad_query = substitute_tags(
-        nomad_complete_prompt(f"{nq_dir}/{nomad_query_type}.json"),
-        {id_type: ids},
-    )
-    if nomad_query_type == "computational":
-        nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe, use_streamlit=use_streamlit)
-    else:
+    try:
+        nomad_query = substitute_tags(
+            nomad_complete_prompt(f"{nq_dir}/{nomad_query_type}.json"),
+            {id_type: ids},
+        )
+    except FileNotFoundError:
         print("Invalid NOMAD query type.")
+    
+    nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe, use_streamlit=use_streamlit)
+
 
     # Query LLAMA
     if llama_query_type:
