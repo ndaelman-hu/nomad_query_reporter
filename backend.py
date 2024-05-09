@@ -49,38 +49,37 @@ def main(
     )
     if nomad_query_type == "computational":
         nomad_df = ping_nomad(nomad_query, nomad_url, extend_dataframe, use_streamlit=use_streamlit)
-        # nomad_df = nomad_df.drop(nomad_df.columns[nomad_df.isin(['Unknown']).any()], axis=1)  # ! re-evaluate
-        llama_prompt = str(
-            {
-                "attributes": nomad_df.columns,
-                "method": nomad_df[filter_by_column(nomad_df, r"results\.method\..*").keys()].to_string(),
-                "software": nomad_df["results.method.simulation.program_name"].unique,
-                "material": nomad_df["results.material.chemical_formula_iupac"].unique,
-            }
-        )  # nomad_df.to_string()
     else:
         print("Invalid NOMAD query type.")
 
     # Query LLAMA
     if llama_query_type:
-        llama_params = substitute_tags(
-            llama_complete_prompt(f"{lq_dir}/{llama_query_type}.json"),
-            {"prompt": llama_prompt},
-        )
         if use_streamlit:
             llama_status = st.status("Sending query to LLAMA …")
-        llama_response = requests.post(llama_url, json=llama_params)
+
+        llama_query_specs, llama_response = json.load(open(f"{lq_dir}/{llama_query_type}.json")), None
+        for pattern, chat in zip(llama_query_specs["patterns"], llama_query_specs["chats"]):
+            llama_prompt = str(
+                {
+                    column_name: list(nomad_df[column_name].unique())
+                    for column_name in filter_by_column(nomad_df, pattern).keys()
+                }
+            )
+            llama_params = substitute_tags(llama_complete_prompt(chat, temperature=.1), {"prompt": llama_prompt})
+            if llama_response is not None:
+                llama_params['messages'] = [llama_response_to_list(llama_response)['message']] + llama_params['messages']
+
+            llama_response = requests.post(llama_url, json=llama_params)
+            if llama_response.status_code != 200:
+                if use_streamlit:
+                    llama_status.update(label="Failed to push LLAMA query.", state="error")
+                print("Failed to push llama query:", llama_response.text)
+                sys.exit(1)
+
         if llama_response.status_code == 200:
-            if use_streamlit:
-                llama_status.update(label="LLAMA query successful.", state="complete")
-            print(llama_response_to_list(llama_response))
-        else:
-            if use_streamlit:
-                llama_status.update(label="Failed to push LLAMA query.", state="error")
-            print("Failed to push llama query:", llama_response.text)
-            sys.exit(1)
-    else:
-        print(llama_prompt)
+                if use_streamlit:
+                    llama_status.update(label="LLAMA query successful.", state="complete")
+                print(llama_response_to_list(llama_response)['message']['content'])
 
 
 if __name__ == "__main__":

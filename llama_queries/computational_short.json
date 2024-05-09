@@ -1,0 +1,53 @@
+{
+    "patterns": [
+        "results.properties.electronic.*",
+        "results.material.*",
+        "results.method.*"
+    ],
+    "chats":[
+        {
+            "messages": [
+            {
+                "role": "system",
+                "content": "I am a data analyst, summarizing data that you provide in a single paragraph. I only provide full-sentence summaries, and no bullet points. Let us stay on-topic and provide relevant information only. I will no bother you with disclaimers or suggestions for improvements. No statistics terms, just interesting numbers."
+            },
+            {
+                "role": "assistant",
+                "content": "Please provide me some data:"
+            },
+            {
+                "role": "user",
+                "content": "Here is some data on the properties derived. Give it the header **Properties**:"
+            },
+            {
+                "role": "user",
+                "content": "<prompt>"
+            }
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "Very nice. Repeat properties ad verbatim and add something on **techniques** used:"
+            },
+            {
+                "role": "user",
+                "content": "<prompt>"
+            }
+        ]
+    },
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "Very nice. Repeat properties and techniques ad verbatim and add something on the **composition**:"
+            },
+            {
+                "role": "user",
+                "content": "<prompt>"
+            }
+        ]
+    }
+    ]
+}
