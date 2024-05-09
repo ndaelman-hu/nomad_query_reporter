@@ -1,0 +1,28 @@
+{
+    "query": {
+        "upload_id:any": "<upload_id>"
+    },
+    "required": {
+        "resolve-inplace": true,
+        "metadata": {
+            "datasets": {
+                "doi": "*"
+            }
+        },
+        "results": {
+            "material": {
+                "material_name": "*",
+                "chemical_formula_iupac": "*",
+                "symmetry": "*"
+            },
+            "method": {
+                "method_name": "*",
+                "workflow_name": "*",
+                "simulation": {
+                    "program_name": "*"
+                }
+            },
+            "properties": "*"
+        }
+    }
+}

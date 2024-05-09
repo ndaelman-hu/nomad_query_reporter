@@ -28,13 +28,13 @@ st.title('NOMAD Query Reporter')
 
 # Query selector
 button_clicked = st.button("query type")
-query_options = ["computational"]
-query_option_map = {"computational": ("computational", "computational")}
+query_options = ["verbose", "executive summary"]
+query_option_map = {"verbose": ("computational", "computational"), "executive summary": ("computational_short", "computational_short")}
 
 default_index = 0
 query_type = query_options[default_index]
 if button_clicked:
-    query_type = st.selectbox("Select an option", query_options, index=default_index)
+    query_type = st.selectbox("Select an option", query_options)
 
 # Chat
 if "messages" not in st.session_state:

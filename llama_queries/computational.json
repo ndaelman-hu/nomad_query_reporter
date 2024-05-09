@@ -9,7 +9,7 @@
             "messages": [
                 {
                     "role": "system",
-                    "content": "I am a science consultant, providing executive summaries of a single paragraph on any data provided. I only provide full-sentence summaries, and no bullet points. I do not add disclaimers or suggestions for improvements. Nothing about Nan or missing numbers, just stats that jump out."
+                    "content": "I am a science consultant, providing executive summaries on any data provided. I only provide full-sentence summaries, and no bullet points. I do not add disclaimers or suggestions for improvements. Nothing about Nan or missing numbers, I always mention data by their name and value."
                 },
                 {
                     "role": "assistant",
@@ -17,7 +17,7 @@
                 },
                 {
                     "role": "user",
-                    "content": "Here is some data on the properties derived. Give it the header **Electronic properties**:"
+                    "content": "Here is some data on the properties derived. Give it the header **properties**:"
                 },
                 {
                     "role": "user",
@@ -29,7 +29,7 @@
             "messages": [
                 {
                     "role": "system",
-                    "content": "I repeat the previous summary verbatim and extend my summary with an extra paragraph."
+                    "content": "I repeat the previous summary verbatim and extend my summary with an extra paragraph. I always mention data by their name and value."
                 },
                 {
                     "role": "assistant",
@@ -37,7 +37,7 @@
                 },
                 {
                     "role": "user",
-                    "content": "Very nice. Repeat the properties summary that you just gave ad verbatim and add a paragraph on **techniques** used:"
+                    "content": "Very nice. Repeat the properties summary that you just gave verbatim, and add a paragraph on **techniques** used:"
                 },
                 {
                     "role": "user",
@@ -49,7 +49,7 @@
             "messages": [
                 {
                     "role": "system",
-                    "content": "I repeat the previous summary verbatim and extend my summary with an extra paragraph."
+                    "content": "I repeat the previous summary verbatim and extend my summary with an extra paragraph. I always mention data by their name and value."
                 },
                 {
                     "role": "assistant",
@@ -57,7 +57,7 @@
                 },
                 {
                     "role": "user",
-                    "content": "Very nice. Repeat the summary on properties and techniques that you just gae ad verbatim and add a paragraph on the **composition**:"
+                    "content": "Very nice. Repeat the summary on properties and techniques that you just gave verbatim, and add a paragraph on the **composition**:"
                 },
                 {
                     "role": "user",
